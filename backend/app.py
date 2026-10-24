@@ -67,7 +67,7 @@ def global_context(): return {'modules':MODULES}
 
 def db_error(e):
     msg=str(e)
-    if getattr(e,'errno',None)==1644 or '45000' in msg or 'signal sqlstate' in msg.lower(): return msg.split(' (') [0] if msg else 'The database rejected this operation.'
+    if getattr(e,'errno',None)==1644 or '45000' in msg or 'signal sqlstate' in msg.lower(): return msg.split(': ',1)[-1] if ': ' in msg else msg
     if 'foreign key constraint fails' in msg.lower(): return 'This record is linked to other records. Remove or update its dependent records first.'
     if 'duplicate entry' in msg.lower():
         if 'transaction_reference' in msg.lower() or 'transaction reference' in msg.lower(): return 'That transaction reference already exists. Use a unique transaction reference.'

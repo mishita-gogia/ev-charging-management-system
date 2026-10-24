@@ -102,9 +102,8 @@ def dashboard():
     try:
         metrics={'stations':one('SELECT COUNT(*) n FROM charging_stations')['n'],'slots':one('SELECT COUNT(*) n FROM charging_slots')['n'],'available':one("SELECT COUNT(*) n FROM charging_slots WHERE status='AVAILABLE'")['n'],'occupied':one("SELECT COUNT(*) n FROM charging_slots WHERE status='OCCUPIED'")['n'],'sessions':one('SELECT COUNT(*) n FROM charging_sessions')['n'],'active':one("SELECT COUNT(*) n FROM charging_sessions WHERE status='ACTIVE'")['n'],'revenue':one("SELECT COALESCE(SUM(amount),0) n FROM payments WHERE payment_status='SUCCESS'")['n'],'maintenance':one("SELECT COUNT(*) n FROM maintenance WHERE status IN ('PENDING','IN_PROGRESS')")['n']}
         recent=rows('SELECT session_id,station_name,status,energy_kwh,booking_time FROM session_details ORDER BY booking_time DESC LIMIT 6')
-        city=rows('SELECT city,COUNT(*) AS total FROM charging_stations GROUP BY city ORDER BY total DESC')
         statuses=rows('SELECT status,COUNT(*) AS total FROM charging_sessions GROUP BY status')
-        return render_template('dashboard.html',metrics=metrics,recent=recent,city=city,statuses=statuses)
+        return render_template('dashboard.html',metrics=metrics,recent=recent,statuses=statuses)
     except Exception as e: return render_template('error.html',message='Dashboard could not load from MySQL: '+db_error(e))
 
 def get_lookups(fields):

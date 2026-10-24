@@ -280,7 +280,11 @@ EXAMPLES = [
 ('Views and indexes','EXPLAIN status filter',"EXPLAIN SELECT session_id, slot_id, status FROM charging_sessions WHERE status='COMPLETED'")
 ]
 
-EXAMPLE_GROUPS = {}\nfor group, title, sql in EXAMPLES:\n    EXAMPLE_GROUPS.setdefault(group, []).append((title, sql))\n\n@app.route('/sql-playground',methods=['GET','POST'])
+EXAMPLE_GROUPS = {}
+for group, title, sql in EXAMPLES:
+    EXAMPLE_GROUPS.setdefault(group, []).append((title, sql))
+
+@app.route('/sql-playground',methods=['GET','POST'])
 @login_required
 def sql_playground():
     query=request.form.get('query',EXAMPLES[0][2]); result=None; columns=[]; error=None; affected=None

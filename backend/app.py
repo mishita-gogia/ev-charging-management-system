@@ -280,7 +280,7 @@ EXAMPLES = [
 ('Views and indexes','EXPLAIN status filter',"EXPLAIN SELECT session_id, slot_id, status FROM charging_sessions WHERE status='COMPLETED'")
 ]
 
-@app.route('/sql-playground',methods=['GET','POST'])
+EXAMPLE_GROUPS = {}\nfor group, title, sql in EXAMPLES:\n    EXAMPLE_GROUPS.setdefault(group, []).append((title, sql))\n\n@app.route('/sql-playground',methods=['GET','POST'])
 @login_required
 def sql_playground():
     query=request.form.get('query',EXAMPLES[0][2]); result=None; columns=[]; error=None; affected=None
@@ -300,7 +300,7 @@ def sql_playground():
             except: conn.rollback(); raise
             finally: cur.close(); conn.close()
         except Exception as e: error=db_error(e)
-    return render_template('sql.html',examples=EXAMPLES,query=query,result=result,columns=columns,error=error,affected=affected,destructive=destructive)
+    return render_template('sql.html',examples=EXAMPLES,example_groups=EXAMPLE_GROUPS,query=query,result=result,columns=columns,error=error,affected=affected,destructive=destructive)
 
 @app.errorhandler(404)
 def not_found(e): return redirect(url_for('dashboard') if session.get('manager_id') else url_for('login'))

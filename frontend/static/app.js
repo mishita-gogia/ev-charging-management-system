@@ -1,0 +1,3 @@
+const picker=document.getElementById('sql-example-picker');
+if(picker) picker.addEventListener('change',()=>{const option=picker.selectedOptions[0];const editor=document.getElementById('sql-query');if(option&&option.dataset.query&&editor){editor.value=option.dataset.query;editor.focus();}});
+document.querySelectorAll('form').forEach(form=>{if(form.id==='sql-form') form.addEventListener('submit',()=>{const button=form.querySelector('button[type="submit"]');if(button){button.disabled=true;button.textContent='Running…';}})});

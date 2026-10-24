@@ -3,7 +3,7 @@ import os, getpass
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash
 import mysql.connector
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 email=input('Manager email (existing ADMIN email or new email): ').strip().lower()
 name=input('Manager display name: ').strip() or 'Network Manager'
 password=getpass.getpass('Choose manager password (minimum 10 characters): ')

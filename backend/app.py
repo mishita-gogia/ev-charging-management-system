@@ -5,7 +5,7 @@ from werkzeug.security import check_password_hash
 from dotenv import load_dotenv
 import mysql.connector
 
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 app = Flask(__name__, template_folder='../frontend/templates', static_folder='../frontend/static')
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'change-this-before-use')
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax')
@@ -27,7 +27,7 @@ FK_LOOKUPS = {'station':('charging_stations','station_id','station_name'),'slot'
 LIST_QUERIES = {
  'slots': ("SELECT sl.*, st.station_name FROM charging_slots sl JOIN charging_stations st ON st.station_id=sl.station_id", ["CAST(sl.slot_id AS CHAR)","st.station_name","sl.charger_type","CAST(sl.speed AS CHAR)","sl.status"]),
  'vehicles': ("SELECT v.*, u.name AS owner_name FROM vehicles v JOIN users u ON u.user_id=v.user_id", ["v.vehicle_no","v.model","u.name","CAST(v.battery_capacity AS CHAR)"]),
- 'sessions': ("SELECT sd.*, tp.charger_type AS tariff_charger_type, tp.rate_per_kwh FROM session_details sd JOIN tariff_plans tp ON tp.tariff_id=sd.tariff_id", ["CAST(sd.session_id AS CHAR)","sd.station_name","CAST(sd.slot_id AS CHAR)","sd.slot_charger_type","sd.user_name","sd.vehicle_no","tp.charger_type","CAST(tp.rate_per_kwh AS CHAR)","sd.status"]),
+ 'sessions': ("SELECT sd.*, tp.charger_type AS tariff_charger_type, tp.rate_per_kwh, b.bill_id FROM session_details sd JOIN tariff_plans tp ON tp.tariff_id=sd.tariff_id LEFT JOIN bills b ON b.session_id=sd.session_id", ["CAST(sd.session_id AS CHAR)","sd.station_name","CAST(sd.slot_id AS CHAR)","sd.slot_charger_type","sd.user_name","sd.vehicle_no","tp.charger_type","CAST(tp.rate_per_kwh AS CHAR)","sd.status"]),
  'bills': ("SELECT b.*, sd.session_id, sd.user_name, sd.station_name FROM bills b JOIN session_details sd ON sd.session_id=b.session_id", ["CAST(b.bill_id AS CHAR)","CAST(b.session_id AS CHAR)","sd.user_name","sd.station_name","CAST(b.amount AS CHAR)","CAST(b.gst AS CHAR)","b.status"]),
  'payments': ("SELECT p.*, u.name AS user_name, b.amount AS bill_amount FROM payments p JOIN users u ON u.user_id=p.user_id JOIN bills b ON b.bill_id=p.bill_id", ["CAST(p.payment_id AS CHAR)","u.name","CAST(p.bill_id AS CHAR)","CAST(b.amount AS CHAR)","CAST(p.amount AS CHAR)","p.mode","p.payment_status","p.transaction_reference"]),
  'maintenance': ("SELECT m.*, t.name AS technician_name, st.station_name FROM maintenance m JOIN technicians t ON t.technician_id=m.technician_id JOIN charging_stations st ON st.station_id=m.station_id", ["CAST(m.maintenance_id AS CHAR)","t.name","st.station_name","m.issue","CAST(m.maintenance_date AS CHAR)","m.status"])
@@ -135,7 +135,14 @@ def list_module(module):
             if search and searchable: sql+=' WHERE '+' OR '.join(f"CAST({c} AS CHAR) LIKE %s" for c in searchable); params=['%'+search+'%']*len(searchable)
         sql+=f" ORDER BY {cfg['pk']} DESC LIMIT 300"
         data=rows(sql,params); lookups=get_lookups(cfg['fields'])
-        return render_template('module.html',cfg=cfg,module=module,data=data,search=search,lookups=lookups)
+        display_fields = cfg['fields']
+        if module == 'slots': display_fields = [('slot_id','Slot ID','text',True),('station_name','Station','text',True),('charger_type','Charger type','text',True),('speed','Speed (kW)','number',True),('status','Status','text',True)]
+        elif module == 'vehicles': display_fields = [('vehicle_id','Vehicle ID','text',True),('vehicle_no','Vehicle number','text',True),('owner_name','Owner','text',True),('model','Model','text',True),('battery_capacity','Battery capacity (kWh)','number',True)]
+        elif module == 'sessions': display_fields = [('session_id','Session','text',True),('station_name','Station','text',True),('slot_id','Slot','text',True),('slot_charger_type','Slot charger','text',True),('user_name','User','text',True),('vehicle_no','Vehicle','text',True),('tariff_charger_type','Tariff charger','text',True),('rate_per_kwh','Rate/kWh','number',True),('status','Status','text',True)]
+        elif module == 'bills': display_fields = [('bill_id','Bill','text',True),('session_id','Session','text',True),('user_name','User','text',True),('station_name','Station','text',True),('amount','Amount','number',True),('gst','GST','number',True),('status','Status','text',True)]
+        elif module == 'payments': display_fields = [('payment_id','Payment','text',True),('user_name','User','text',True),('bill_id','Bill','text',True),('bill_amount','Bill amount','number',True),('amount','Payment amount','number',True),('mode','Mode','text',True),('payment_status','Payment status','text',True),('transaction_reference','Transaction reference','text',False)]
+        elif module == 'maintenance': display_fields = [('maintenance_id','Maintenance','text',True),('technician_name','Technician','text',True),('station_name','Station','text',True),('issue','Issue','text',True),('maintenance_date','Date','text',True),('status','Status','text',True)]
+        return render_template('module.html',cfg=cfg,module=module,data=data,search=search,lookups=lookups,display_fields=display_fields)
     except Exception as e: return render_template('error.html',message='Could not load '+cfg['title']+': '+db_error(e))
 
 @app.route('/<module>/new',methods=['GET','POST'])

@@ -167,20 +167,30 @@ def edit_module(module,record_id=None):
                     except ValueError: flash(label+' must be a valid non-negative number.','error'); return render_template('form.html',cfg=cfg,module=module,record=record,editing=editing,lookups=lookups)
                 values.append(raw)
             if module=='sessions':
-                slot_id=int(request.form['slot_id']); status=request.form['status']
+                slot_id=int(request.form['slot_id']); vehicle_id=int(request.form['vehicle_id']); status=request.form['status']
                 conn=db(); cur=conn.cursor(dictionary=True)
                 try:
-                    cur.execute('SELECT status FROM charging_slots WHERE slot_id=%s FOR UPDATE',(slot_id,))
+                    # Derive required legacy schema fields from the selected slot and vehicle.
+                    cur.execute('SELECT station_id, status FROM charging_slots WHERE slot_id=%s FOR UPDATE',(slot_id,))
                     slot=cur.fetchone()
                     if not slot: raise ValueError('Choose a valid charging slot.')
+                    cur.execute('SELECT user_id FROM vehicles WHERE vehicle_id=%s',(vehicle_id,))
+                    vehicle=cur.fetchone()
+                    if not vehicle: raise ValueError('Choose a valid vehicle.')
+                    station_id=slot['station_id']
+                    user_id=vehicle['user_id']
                     if status in ('BOOKED','ACTIVE'):
                         cur.execute("SELECT session_id FROM charging_sessions WHERE slot_id=%s AND status IN ('BOOKED','ACTIVE') AND session_id<>%s LIMIT 1",(slot_id,record_id or 0))
                         if cur.fetchone(): raise ValueError('That slot already has a booked or active session.')
                     cols=[f[0] for f in cfg['fields']]
                     if editing:
-                        cur.execute(f"UPDATE charging_sessions SET "+', '.join(c+'=%s' for c in cols)+ " WHERE session_id=%s",tuple(values+[record_id]))
+                        update_cols=cols+['station_id','user_id']
+                        update_values=values+[station_id,user_id,record_id]
+                        cur.execute("UPDATE charging_sessions SET "+', '.join(c+'=%s' for c in update_cols)+" WHERE session_id=%s",tuple(update_values))
                     else:
-                        cur.execute("INSERT INTO charging_sessions ("+', '.join(cols)+") VALUES ("+', '.join(['%s']*len(cols))+")",tuple(values))
+                        insert_cols=cols+['station_id','user_id']
+                        insert_values=values+[station_id,user_id]
+                        cur.execute("INSERT INTO charging_sessions ("+', '.join(insert_cols)+") VALUES ("+', '.join(['%s']*len(insert_cols))+")",tuple(insert_values))
                     conn.commit()
                 except Exception:
                     conn.rollback(); raise
